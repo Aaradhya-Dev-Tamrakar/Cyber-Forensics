@@ -71,15 +71,28 @@ if (-not (Test-Path "$repoRoot\.git")) {
 $currentBranch = (git branch --show-current 2>$null)
 if (-not $currentBranch) { $currentBranch = "main" }
 $hasRemote = [bool](git remote get-url origin 2>$null)
+$remoteBranchExists = if ($hasRemote) { [bool](git ls-remote --heads origin $currentBranch 2>$null) } else { $false }
+
+# 0. Verification Gate
+if (Test-Path "scripts/verify.py") {
+    Write-Status "Running scripts/verify.py..."
+    python scripts/verify.py
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail "scripts/verify.py reported errors. Fix before committing."
+        exit $LASTEXITCODE
+    }
+}
 
 # 1. Pull
-if ($hasRemote) {
+if ($hasRemote -and $remoteBranchExists) {
     Write-Status "Pulling latest updates from origin/$currentBranch..."
-    git pull --rebase --autostash origin $currentBranch 2>$null
+    git pull --rebase --autostash origin $currentBranch
     if ($LASTEXITCODE -ne 0) {
         Write-Fail "git pull encountered conflicts or errors."
         exit $LASTEXITCODE
     }
+} else {
+    Write-Status "Branch $currentBranch is local-only. Skipping initial pull."
 }
 
 if ($PullOnly) {
@@ -130,11 +143,11 @@ git commit -m $Message
 # 6. Push
 if (-not $NoPush -and $hasRemote) {
     Write-Status "Pushing to origin/$currentBranch..."
-    git push origin $currentBranch
+    git push -u origin $currentBranch
     if ($LASTEXITCODE -ne 0) {
         Write-Status "Push rejected, attempting rebase pull..." -Color Yellow
         git pull --rebase origin $currentBranch
-        git push origin $currentBranch
+        git push -u origin $currentBranch
     }
     Write-Success "Cyber-Forensics synchronized and pushed successfully."
 } else {
