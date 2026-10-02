@@ -1,0 +1,19 @@
+# Evidence dumps and forensic disk images
+evidence/
+triage_output/
+*.raw
+*.dump
+*.mem
+*.dmp
+*.pcap
+*.pcapng
+*.evtx
+*.vhd
+*.vhdx
+
+# Temporary logs and test specimens
+tests/specimens/
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
